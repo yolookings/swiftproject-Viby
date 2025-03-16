@@ -21,5 +21,7 @@
 			</array>
 		</dict>
 	</dict>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Viby membutuhkan akses mikrofon untuk merekam suara Anda</string>
 </dict>
 </plist>
