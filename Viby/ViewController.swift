@@ -91,6 +91,15 @@ class ViewController: UIViewController {
             audioRecorder?.delegate = self
             audioRecorder?.record()
             recordButton.isSelected = true
+            
+            // Add timer for updating duration
+            Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
+                guard let self = self, self.audioRecorder != nil else {
+                    timer.invalidate()
+                    return
+                }
+                self.updateRecordingDuration()
+            }
         } catch {
             stopRecording()
         }
@@ -121,6 +130,13 @@ class ViewController: UIViewController {
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
+    
+    private func updateRecordingDuration() {
+        guard let recorder = audioRecorder else { return }
+        let duration = recorder.currentTime
+        // Update UI dengan durasi
+        print("Recording duration: \(duration)")
+    }
 }
 
 // MARK: - UITableViewDelegate & UITableViewDataSource
@@ -139,6 +155,54 @@ extension ViewController: UITableViewDelegate, UITableViewDataSource {
         cell.contentConfiguration = content
         
         return cell
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        let recording = recordings[indexPath.row]
+        AudioPlayer.shared.play(url: recording.url)
+        tableView.deselectRow(at: indexPath, animated: true)
+    }
+    
+    func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
+        let deleteAction = UIContextualAction(style: .destructive, title: "Hapus") { [weak self] (_, _, completion) in
+            self?.deleteRecording(at: indexPath)
+            completion(true)
+        }
+        
+        let editAction = UIContextualAction(style: .normal, title: "Edit") { [weak self] (_, _, completion) in
+            self?.editRecordingTitle(at: indexPath)
+            completion(true)
+        }
+        
+        return UISwipeActionsConfiguration(actions: [deleteAction, editAction])
+    }
+    
+    private func deleteRecording(at indexPath: IndexPath) {
+        let recording = recordings[indexPath.row]
+        do {
+            try FileManager.default.removeItem(at: recording.url)
+            recordings.remove(at: indexPath.row)
+            tableView.deleteRows(at: [indexPath], with: .fade)
+        } catch {
+            print("Error deleting recording: \(error.localizedDescription)")
+        }
+    }
+    
+    private func editRecordingTitle(at indexPath: IndexPath) {
+        let alert = UIAlertController(title: "Edit Judul", message: nil, preferredStyle: .alert)
+        alert.addTextField { textField in
+            textField.text = self.recordings[indexPath.row].title
+        }
+        
+        let saveAction = UIAlertAction(title: "Simpan", style: .default) { [weak self] _ in
+            guard let newTitle = alert.textFields?.first?.text else { return }
+            self?.recordings[indexPath.row].title = newTitle
+            self?.tableView.reloadRows(at: [indexPath], with: .automatic)
+        }
+        
+        alert.addAction(saveAction)
+        alert.addAction(UIAlertAction(title: "Batal", style: .cancel))
+        present(alert, animated: true)
     }
 }
 
